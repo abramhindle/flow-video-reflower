@@ -3,9 +3,11 @@ import cv2
 import numpy as np
 from numpy import *
 cap = cv2.VideoCapture("vtest.avi")
-scaledown = 0.3
+scaledown = 0.2
 ret, frame1 = cap.read()
 prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
+oldest = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
+remapped = oldest
 prvs = cv2.resize(prvs, (0,0), fx=scaledown, fy=scaledown) 
 frame1 = cv2.resize(frame1, (0,0), fx=scaledown, fy=scaledown) 
 hsv = np.zeros_like(frame1)
@@ -29,6 +31,23 @@ hsv[...,1] = 255
 # todo
 # get the kinect in here
 
+ptpts = ndarray((prvs.shape[0],prvs.shape[1],2))
+def mkpoints(ptpts):
+    (w,h,n) = ptpts.shape
+    for y in range(0,h):
+        for x in range(0,w):
+            ptpts[x,y,0] = y
+            ptpts[x,y,1] = x
+    return ptpts.astype('float32')
+
+def init_ptpts(ptpts):
+    return mkpoints(ptpts)
+
+def reflow(flow,pts):
+    return flow + pts
+
+ptpts = init_ptpts(ptpts)
+frames = 0
 while(1):
     ret, frame2 = cap.read()
     next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
@@ -48,18 +67,23 @@ while(1):
     #        flags – 
     #flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 15, 3, 5, 1.2)
     scale = 0.25
-    levels = 5
-    winsize = 8
-    iterations = 5
+    levels = 6
+    winsize = 16
+    iterations = 3
     polyn = winsize
     polysigma = 2
     flow = cv2.calcOpticalFlowFarneback(prvs,next,scale,levels,winsize,iterations,polyn,polysigma,0)
-    print `flow.shape()`
     mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
     hsv[...,0] = ang*180/np.pi/2
     hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
     rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-    cv2.imshow('frame2',rgb)
+    rflow = reflow(flow,ptpts)
+    remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0)#cv2.INTER_LINEAR)
+    cv2.imshow('frame2',remapped)
+    cv2.imshow('rgb',rgb)
+    cv2.imshow('next',next)
+    cv2.imshow('oldest',oldest)
+    #cv2.imshow('frame2',rgb)
     #cv2.imshow('frame2',frame2)
     k = cv2.waitKey(1000/60) & 0xff
     if k == 27:
@@ -68,6 +92,9 @@ while(1):
         cv2.imwrite('opticalfb.png',frame2)
         cv2.imwrite('opticalhsv.png',rgb)
     prvs = next
-
+    frames = frames + 1
+    if frames % 30 == 0:
+        oldest = prvs
+        remapped = oldest
 cap.release()
 cv2.destroyAllWindows()
