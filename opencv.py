@@ -2,16 +2,41 @@
 import cv2
 import numpy as np
 from numpy import *
+import freenect
 cap = cv2.VideoCapture("vtest.avi")
-kinect = cv2.VideoCapture(0)
-print kinect.isOpened()
+
+"""
+Grabs a depth map from the Kinect sensor and creates an image from it.
+http://euanfreeman.co.uk/openkinect-python-and-opencv/
+"""
+def get_depth_map():    
+    depth, timestamp = freenect.sync_get_depth()
+ 
+    np.clip(depth, 0, 2**10 - 1, depth)
+    depth >>= 2
+    depth = depth.astype(np.uint8)
+ 
+    return depth
+
+kinect = None
+
+def get_kinect_video():    
+    global kinect
+    if kinect == None:
+        print "Opening Kinect"
+        kinect = cv2.VideoCapture(-1)
+    ret, frame2 = kinect.read()
+    print frame2.shape
+    next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
+    return next
 
 
-scaledown = 0.2
+
+scaledown = 0.4
 ret, frame1 = cap.read()
 remapped = frame1
 
-ret, depth_map = capture.retrieve(0, cv.CV_CAP_OPENNI_DEPTH_MAP) 
+DEPTH_MAP = 0
 
 
 prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
@@ -19,8 +44,11 @@ oldest = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
 
 prvs = cv2.resize(prvs, (0,0), fx=scaledown, fy=scaledown) 
 frame1 = cv2.resize(frame1, (0,0), fx=scaledown, fy=scaledown) 
-hsv = np.zeros_like(frame1)
-hsv[...,1] = 255
+#hsv = np.zeros_like(frame1)
+#hsv[...,1] = 255
+hsv = None
+
+prvs = None
 
 # todo 
 #  make a matrix of points like flow but just the actual locations in the matrix
@@ -66,10 +94,23 @@ ptpts = init_ptpts(ptpts)
 frames = 0
 while(1):
     ret, frame2 = cap.read()
-    ret, depth_map = capture.retrieve(0, cv.CV_CAP_OPENNI_DEPTH_MAP) 
+    #depth_map = get_depth_map()
+    depth_map = get_kinect_video()
 
-    next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
-    next = cv2.resize(next, (0,0), fx=scaledown, fy=scaledown) 
+    #next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
+    #next = cv2.resize(next, (0,0), fx=scaledown, fy=scaledown) 
+
+    next = cv2.resize(depth_map, (0,0), fx=scaledown, fy=scaledown)
+    if prvs == None:
+        prvs = cv2.resize(depth_map, (0,0), fx=scaledown, fy=scaledown)
+        hsv = np.zeros((prvs.shape[0],prvs.shape[1],3))
+        hsv[...,1] = 255
+        hsv = hsv.astype('uint8')
+
+
+    cv2.imshow('next',next)
+
+
     # Python: cv2.calcOpticalFlowFarneback(prev, next, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags[, flow])   flow
     #    Parameters:	
     #
@@ -101,7 +142,7 @@ while(1):
     cv2.imshow('frame2',frame2)
     cv2.imshow('remapped',remapped)
     cv2.imshow('rgb',rgb)
-    cv2.imshow('next',next)
+    cv2.imshow('dept_map',depth_map)
 
     #cv2.imshow('frame2',rgb)
     #cv2.imshow('frame2',frame2)
@@ -115,9 +156,9 @@ while(1):
 
     frames = frames + 1
 
-    if frames % 5 == 0:
-        oldest = prvs
-        remapped = frame2
+    #if frames % 5 == 0:
+    oldest = prvs
+    remapped = frame2
 
 
 cap.release()
