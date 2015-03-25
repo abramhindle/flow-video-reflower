@@ -3,11 +3,16 @@ import cv2
 import numpy as np
 from numpy import *
 cap = cv2.VideoCapture("vtest.avi")
+#kinect = cv2.VideoCapture(0)
+#print kinect.isOpened()
+
 scaledown = 0.2
 ret, frame1 = cap.read()
+remapped = frame1
+
 prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
 oldest = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
-remapped = oldest
+
 prvs = cv2.resize(prvs, (0,0), fx=scaledown, fy=scaledown) 
 frame1 = cv2.resize(frame1, (0,0), fx=scaledown, fy=scaledown) 
 hsv = np.zeros_like(frame1)
@@ -31,7 +36,8 @@ hsv[...,1] = 255
 # todo
 # get the kinect in here
 
-ptpts = ndarray((prvs.shape[0],prvs.shape[1],2))
+#ptpts = ndarray((prvs.shape[0],prvs.shape[1],2))
+ptpts = ndarray((remapped.shape[0],remapped.shape[1],2))
 def mkpoints(ptpts):
     (w,h,n) = ptpts.shape
     for y in range(0,h):
@@ -46,10 +52,18 @@ def init_ptpts(ptpts):
 def reflow(flow,pts):
     return flow + pts
 
+def reflow_resize(flow,pts):
+    rflow = cv2.resize(flow, (pts.shape[1],pts.shape[0]))
+    return (6.0/scaledown)*rflow + pts
+
+
 ptpts = init_ptpts(ptpts)
+
 frames = 0
 while(1):
     ret, frame2 = cap.read()
+    #ret, depth_map = capture.retrieve(0, cv.CV_CAP_OPENNI_DEPTH_MAP) 
+
     next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
     next = cv2.resize(next, (0,0), fx=scaledown, fy=scaledown) 
     # Python: cv2.calcOpticalFlowFarneback(prev, next, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags[, flow])   flow
@@ -77,12 +91,14 @@ while(1):
     hsv[...,0] = ang*180/np.pi/2
     hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
     rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-    rflow = reflow(flow,ptpts)
+    rflow = reflow_resize(flow,ptpts)
     remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0)#cv2.INTER_LINEAR)
-    cv2.imshow('frame2',remapped)
+
+    cv2.imshow('frame2',frame2)
+    cv2.imshow('remapped',remapped)
     cv2.imshow('rgb',rgb)
     cv2.imshow('next',next)
-    cv2.imshow('oldest',oldest)
+
     #cv2.imshow('frame2',rgb)
     #cv2.imshow('frame2',frame2)
     k = cv2.waitKey(1000/60) & 0xff
@@ -92,9 +108,13 @@ while(1):
         cv2.imwrite('opticalfb.png',frame2)
         cv2.imwrite('opticalhsv.png',rgb)
     prvs = next
+
     frames = frames + 1
-    if frames % 30 == 0:
+
+    if frames % 5 == 0:
         oldest = prvs
-        remapped = oldest
+        remapped = frame2
+
+
 cap.release()
 cv2.destroyAllWindows()
