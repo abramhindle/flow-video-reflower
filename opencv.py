@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 from numpy import *
 import freenect
+fullscreen = False
+cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)
 cap = cv2.VideoCapture("vtest.avi")
 
 """
@@ -26,7 +28,6 @@ def get_kinect_video():
         print "Opening Kinect"
         kinect = cv2.VideoCapture(-1)
     ret, frame2 = kinect.read()
-    print frame2.shape
     next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
     return next
 
@@ -88,10 +89,33 @@ def reflow_resize(flow,pts):
     rflow = cv2.resize(flow, (pts.shape[1],pts.shape[0]))
     return (6.0/scaledown)*rflow + pts
 
+class Reflow:    
+    def __init__(self, pts):
+        self.pts = pts
+    def reflow(self,flow):
+        rflow = cv2.resize(flow, (self.pts.shape[1],self.pts.shape[0]))
+        return (6.0/scaledown)*rflow + self.pts
+
+class ReflowDecay(Reflow):
+    def __init__(self, pts, decay = 0.9):
+        Reflow.__init__(self, pts)
+        self.decay = decay
+        self.history = None
+
+    def reflow(self,flow):
+        rflow = cv2.resize(flow, (self.pts.shape[1],self.pts.shape[0]))
+        if (self.history == None):
+            self.history = rflow
+        old = (6.0/scaledown)*rflow + self.decay * self.history
+        self.history = old
+        return old + self.pts
 
 ptpts = init_ptpts(ptpts)
 
 frames = 0
+
+reflower = ReflowDecay(ptpts,decay=0.95)
+
 while(1):
     ret, frame2 = cap.read()
     #depth_map = get_depth_map()
@@ -136,10 +160,11 @@ while(1):
     hsv[...,0] = ang*180/np.pi/2
     hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
     rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-    rflow = reflow_resize(flow,ptpts)
+    #rflow = reflow_resize(flow,ptpts)
+    rflow = reflower.reflow(flow)
     remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0)#cv2.INTER_LINEAR)
 
-    cv2.imshow('frame2',frame2)
+    #cv2.imshow('frame2',frame2)
     cv2.imshow('remapped',remapped)
     cv2.imshow('rgb',rgb)
     cv2.imshow('dept_map',depth_map)
@@ -152,6 +177,16 @@ while(1):
     elif k == ord('s'):
         cv2.imwrite('opticalfb.png',frame2)
         cv2.imwrite('opticalhsv.png',rgb)
+    elif k == ord('f'):
+        if not fullscreen:
+            #cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)          
+            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
+            fullscreen = True
+        else:
+            #cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)          
+            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, 0)
+            fullscreen = False
+
     prvs = next
 
     frames = frames + 1
