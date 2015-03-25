@@ -3,12 +3,16 @@ import cv2
 import numpy as np
 from numpy import *
 cap = cv2.VideoCapture("vtest.avi")
-#kinect = cv2.VideoCapture(0)
-#print kinect.isOpened()
+kinect = cv2.VideoCapture(0)
+print kinect.isOpened()
+
 
 scaledown = 0.2
 ret, frame1 = cap.read()
 remapped = frame1
+
+ret, depth_map = capture.retrieve(0, cv.CV_CAP_OPENNI_DEPTH_MAP) 
+
 
 prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
 oldest = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
@@ -62,7 +66,7 @@ ptpts = init_ptpts(ptpts)
 frames = 0
 while(1):
     ret, frame2 = cap.read()
-    #ret, depth_map = capture.retrieve(0, cv.CV_CAP_OPENNI_DEPTH_MAP) 
+    ret, depth_map = capture.retrieve(0, cv.CV_CAP_OPENNI_DEPTH_MAP) 
 
     next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
     next = cv2.resize(next, (0,0), fx=scaledown, fy=scaledown) 
