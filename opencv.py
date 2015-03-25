@@ -97,16 +97,17 @@ class Reflow:
         return (6.0/scaledown)*rflow + self.pts
 
 class ReflowDecay(Reflow):
-    def __init__(self, pts, decay = 0.9):
+    def __init__(self, pts, decay = 0.9, multiplier = 6.0):
         Reflow.__init__(self, pts)
         self.decay = decay
         self.history = None
+        self.multiplier = multiplier
 
     def reflow(self,flow):
         rflow = cv2.resize(flow, (self.pts.shape[1],self.pts.shape[0]))
         if (self.history == None):
             self.history = rflow
-        old = (6.0/scaledown)*rflow + self.decay * self.history
+        old = (self.multiplier/scaledown)*rflow + self.decay * self.history
         self.history = old
         return old + self.pts
 
@@ -114,7 +115,7 @@ ptpts = init_ptpts(ptpts)
 
 frames = 0
 
-reflower = ReflowDecay(ptpts,decay=0.95)
+reflower = ReflowDecay(ptpts,decay=0.99,multiplier=0.5)
 
 while(1):
     ret, frame2 = cap.read()
