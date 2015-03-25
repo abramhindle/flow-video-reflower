@@ -1,11 +1,24 @@
 # coding=utf8
+import sys
 import cv2
 import numpy as np
 from numpy import *
 import freenect
 fullscreen = False
 cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)
-cap = cv2.VideoCapture("vtest.avi")
+
+kinect = None
+cap = None
+if len(sys.argv) < 2:
+    print "Opening vtest.avi"
+    cap = cv2.VideoCapture("vtest.avi")
+else:
+    print "Opening %s" % sys.argv[1]
+    cap = cv2.VideoCapture(sys.argv[1])
+
+if len(sys.argv) == 3:
+    print "No Kinect: Opening %s" % sys.argv[2]
+    kinect = cv2.VideoCapture(sys.argv[2])
 
 """
 Grabs a depth map from the Kinect sensor and creates an image from it.
@@ -20,7 +33,7 @@ def get_depth_map():
  
     return depth
 
-kinect = None
+
 
 def get_kinect_video():    
     global kinect
@@ -115,7 +128,7 @@ ptpts = init_ptpts(ptpts)
 
 frames = 0
 
-reflower = ReflowDecay(ptpts,decay=0.99,multiplier=0.5)
+reflower = ReflowDecay(ptpts,decay=0.9,multiplier=4)
 
 while(1):
     ret, frame2 = cap.read()
@@ -163,11 +176,13 @@ while(1):
     rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
     #rflow = reflow_resize(flow,ptpts)
     rflow = reflower.reflow(flow)
+
     remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0)#cv2.INTER_LINEAR)
 
     #cv2.imshow('frame2',frame2)
     cv2.imshow('remapped',remapped)
     cv2.imshow('rgb',rgb)
+
     cv2.imshow('dept_map',depth_map)
 
     #cv2.imshow('frame2',rgb)
