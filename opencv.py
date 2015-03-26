@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from numpy import *
 import freenect
+
 fullscreen = False
 cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)
 
@@ -19,6 +20,13 @@ else:
 if len(sys.argv) == 3:
     print "No Kinect: Opening %s" % sys.argv[2]
     kinect = cv2.VideoCapture(sys.argv[2])
+    
+scale = 0.25
+levels = 6
+winsize = 16
+iterations = 3
+polyn = winsize
+polysigma = 2
 
 """
 Grabs a depth map from the Kinect sensor and creates an image from it.
@@ -147,46 +155,20 @@ while(1):
 
 
     cv2.imshow('next',next)
-
-
-    # Python: cv2.calcOpticalFlowFarneback(prev, next, pyr_scale, levels, winsize, iterations, poly_n, poly_sigma, flags[, flow])   flow
-    #    Parameters:	
-    #
-    #        prev – first 8-bit single-channel input image.
-    #        next – second input image of the same size and the same type as prev.
-    #        flow – computed flow image that has the same size as prev and type CV_32FC2.
-    #        pyr_scale – parameter, specifying the image scale (<1) to build pyramids for each image; pyr_scale=0.5 means a classical pyramid, where each next layer is twice smaller than the previous one.
-    #        levels – number of pyramid layers including the initial image; levels=1 means that no extra layers are created and only the original images are used.
-    #        winsize – averaging window size; larger values increase the algorithm robustness to image noise and give more chances for fast motion detection, but yield more blurred motion field.
-    #        iterations – number of iterations the algorithm does at each pyramid level.
-    #        poly_n – size of the pixel neighborhood used to find polynomial expansion in each pixel; larger values mean that the image will be approximated with smoother surfaces, yielding more robust algorithm and more blurred motion field, typically poly_n =5 or 7.
-    #        poly_sigma – standard deviation of the Gaussian that is used to smooth derivatives used as a basis for the polynomial expansion; for poly_n=5, you can set poly_sigma=1.1, for poly_n=7, a good value would be poly_sigma=1.5.
-    #        flags – 
-    #flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 15, 3, 5, 1.2)
-    scale = 0.25
-    levels = 6
-    winsize = 16
-    iterations = 3
-    polyn = winsize
-    polysigma = 2
     flow = cv2.calcOpticalFlowFarneback(prvs,next,scale,levels,winsize,iterations,polyn,polysigma,0)
     mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
     hsv[...,0] = ang*180/np.pi/2
     hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
     rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-    #rflow = reflow_resize(flow,ptpts)
     rflow = reflower.reflow(flow)
-
-    remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0)#cv2.INTER_LINEAR)
-
-    #cv2.imshow('frame2',frame2)
+    # BORDER_TRANSPARENT
+    # BORDER_REPLICATE
+    remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0, borderMode=cv2.BORDER_REFLECT_101 )#cv2.INTER_LINEAR)
     cv2.imshow('remapped',remapped)
     cv2.imshow('rgb',rgb)
 
     cv2.imshow('dept_map',depth_map)
 
-    #cv2.imshow('frame2',rgb)
-    #cv2.imshow('frame2',frame2)
     k = cv2.waitKey(1000/60) & 0xff
     if k == 27:
         break
@@ -195,21 +177,16 @@ while(1):
         cv2.imwrite('opticalhsv.png',rgb)
     elif k == ord('f'):
         if not fullscreen:
-            #cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)          
             cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
             fullscreen = True
         else:
-            #cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)          
             cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, 0)
             fullscreen = False
 
-    prvs = next
-
-    frames = frames + 1
-
-    #if frames % 5 == 0:
     oldest = prvs
+    prvs = next
     remapped = frame2
+    frames = frames + 1
 
 
 cap.release()
