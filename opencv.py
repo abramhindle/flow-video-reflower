@@ -41,14 +41,22 @@ def get_depth_map():
  
     return depth
 
-
-
 def get_kinect_video():    
+    depth, timestamp = freenect.sync_get_video()  
+    if (depth == None):
+        return None
+    return depth[...,1]
+
+
+
+def get_kinect_video_cv():    
     global kinect
     if kinect == None:
         print "Opening Kinect"
         kinect = cv2.VideoCapture(-1)
     ret, frame2 = kinect.read()
+    if not ret:
+        return None
     next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
     return next
 
@@ -136,12 +144,15 @@ ptpts = init_ptpts(ptpts)
 
 frames = 0
 
-reflower = ReflowDecay(ptpts,decay=0.9,multiplier=4)
+reflower = ReflowDecay(ptpts,decay=0.7,multiplier=10)
 
 while(1):
     ret, frame2 = cap.read()
     #depth_map = get_depth_map()
     depth_map = get_kinect_video()
+    if depth_map == None:
+        print "Bad?"
+        continue
 
     #next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
     #next = cv2.resize(next, (0,0), fx=scaledown, fy=scaledown) 
@@ -163,7 +174,7 @@ while(1):
     rflow = reflower.reflow(flow)
     # BORDER_TRANSPARENT
     # BORDER_REPLICATE
-    remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0, borderMode=cv2.BORDER_REFLECT_101 )#cv2.INTER_LINEAR)
+    remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0, borderMode=cv2.BORDER_REFLECT )#cv2.INTER_LINEAR)
     cv2.imshow('remapped',remapped)
     cv2.imshow('rgb',rgb)
 
