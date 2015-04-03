@@ -42,6 +42,8 @@ def get_depth_map():
     return depth
 
 def get_kinect_video():    
+    if not kinect == None:
+        return get_kinect_video_cv()
     depth, timestamp = freenect.sync_get_video()  
     if (depth == None):
         return None
