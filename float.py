@@ -5,11 +5,12 @@ import numpy as np
 from numpy import *
 import freenect
 import liblo
+import random
 
 target = liblo.Address(57120)
 
 class Floater:
-    def __init__(self, id,x,y,mx,my,color=(0,0,0),target=None):
+    def __init__(self, id,x,y,mx,my,color=(0,0,0),target=None,weight=1.0):
         self.id = id
         self.x = x
         self.y = y
@@ -17,20 +18,23 @@ class Floater:
         self.my = my
         self.color = color
         self.target = target
+        self.weight = weight
 
     def modx(self,x):
-        if (x < 0):
-            x = 0
-        elif (x >= self.mx):
-            x = self.mx - 1
-        self.x = x
+        x = x % self.mx
+        self.x = self.x + (x - self.x)/self.weight
 
     def mody(self,y):
-        if (y < 0):
-            y = 0
-        elif (y >= self.my):
-            y = self.my - 1
-        self.y = y        
+        y = y % self.my
+        self.y = self.y + (y - self.y)/self.weight
+
+
+    def mod(self,x,y):
+        self.modx(x)
+        self.mody(y)
+
+    def dmod(self,dx,dy):
+        self.mod(self.x + dx, self.y + dy)
 
     def update(self):
         self.send()
@@ -39,6 +43,32 @@ class Floater:
         if not (self.target == None):
             liblo.send(target, "/flow", int(self.id), float(self.x), float(self.y),float(self.mx),float(self.my))
 
+    def repel(self, floater):
+        if abs(floater.x - self.x) <= 2.0 and abs(floater.x - self.x) <= 2.0:
+            self.mod( self.x + random.gauss(0.0,floater.weight),  self.y + random.gauss(0.0,floater.weight))
+        else:
+            self.dmod( (floater.weight*5.0) / (self.x - floater.x + 0.0001), (floater.weight * 5.0) / (self.y - floater.y + 0.0001))
+
+
+def floater_repel(floaters):
+    if (len(floaters) == 1):
+        return
+    for i in range(0,len(floaters) - 1):
+        for j in range(i,len(floaters)):
+            floaters[i].repel(floaters[j])
+            floaters[j].repel(floaters[i])
+
+def draw_floaters(floaters, buffer):
+    for floater in floats:        
+        cv2.circle(buffer, (int(floater.x), int(floater.y)), int(20*floater.weight), floater.color, thickness=-1, lineType=8)
+
+def flow_floaters( floats, rflow ):
+    for floater in floats:        
+        (x,y) =  rflow[int(floater.y),int(floater.x),...] 
+        floater.mod( x , y )
+        floater.update()
+
+        
 
 floaterid = 1
     
@@ -185,7 +215,7 @@ ptpts = init_ptpts(ptpts)
 
 frames = 0
 
-reflower = ReflowDecay(ptpts,decay=0.99,multiplier=1)
+reflower = ReflowDecay(ptpts,decay=0.995,multiplier=3)
 mx=remapped.shape[1]
 my=remapped.shape[0]
 colors = [
@@ -193,7 +223,8 @@ colors = [
     (0,255,0),
     (0,0,255)
 ]
-def mkFloater(x=None,y=None,c=None):
+weights = [1,2,4]
+def mkFloater(x=None,y=None,c=None,weight=1.0):
     global floaterid
     global remapped
     global target
@@ -203,7 +234,7 @@ def mkFloater(x=None,y=None,c=None):
         x = mmx/2
     if (y == None):
         y = mmy/2
-    floater = Floater(floaterid, x, y, mmx, mmy, colors[floaterid % len(colors)], target)
+    floater = Floater(floaterid, x, y, mmx, mmy, colors[floaterid % len(colors)], target, weight=weights[floaterid % len(weights)])
     floaterid += 1
     return floater
 
@@ -213,6 +244,20 @@ floats = [
     mkFloater(2*mx/3,my/3)    
 ]
 
+def handle_keys():
+    k = cv2.waitKey(1000/60) & 0xff
+    if k == 27:
+        break
+    elif k == ord('s'):
+        cv2.imwrite('opticalfb.png',frame2)
+        cv2.imwrite('opticalhsv.png',rgb)
+    elif k == ord('f'):
+        if not fullscreen:
+            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
+            fullscreen = True
+        else:
+            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, 0)
+            fullscreen = False
 
 
 while(1):
@@ -222,6 +267,8 @@ while(1):
     if depth_map == None:
         print "Bad?"
         continue
+    depth_map = cv2.flip(depth_map, 1)
+
 
     #next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
     #next = cv2.resize(next, (0,0), fx=scaledown, fy=scaledown) 
@@ -245,30 +292,17 @@ while(1):
     # BORDER_REPLICATE
     remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0, borderMode=cv2.BORDER_REFLECT )#cv2.INTER_LINEAR)
     (rh,rw,_) = remapped.shape
-    for floater in floats:        
-        (x,y) =  rflow[int(floater.y),int(floater.x),...] 
-        floater.modx( x ) #floater.x + dx
-        floater.mody( y ) #floater.y + dy
-        floater.update()
-        cv2.circle(remapped, (int(floater.x), int(floater.y)), 20, floater.color, thickness=-1, lineType=8)
+
+    flow_floaters(floats, rflow)
+    floater_repel( floats )
+    draw_floaters( floats, remapped )
+
     cv2.imshow('remapped',remapped)
     cv2.imshow('rgb',rgb)
-
     cv2.imshow('dept_map',depth_map)
 
-    k = cv2.waitKey(1000/60) & 0xff
-    if k == 27:
-        break
-    elif k == ord('s'):
-        cv2.imwrite('opticalfb.png',frame2)
-        cv2.imwrite('opticalhsv.png',rgb)
-    elif k == ord('f'):
-        if not fullscreen:
-            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
-            fullscreen = True
-        else:
-            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, 0)
-            fullscreen = False
+    handle_keys()
+
 
     oldest = prvs
     prvs = next
