@@ -41,7 +41,7 @@ class Floater:
 
     def send(self):
         if not (self.target == None):
-            liblo.send(target, "/flow", int(self.id), float(self.x), float(self.y),float(self.mx),float(self.my))
+            liblo.send(target, "/flow", int(self.id), float(self.x), float(self.y),float(self.mx),float(self.my),float(self.weight))
 
     def repel(self, floater):
         if abs(floater.x - self.x) <= 2.0 and abs(floater.x - self.x) <= 2.0:
@@ -215,7 +215,7 @@ ptpts = init_ptpts(ptpts)
 
 frames = 0
 
-reflower = ReflowDecay(ptpts,decay=0.995,multiplier=3)
+reflower = ReflowDecay(ptpts,decay=0.99,multiplier=1)
 mx=remapped.shape[1]
 my=remapped.shape[0]
 colors = [
@@ -244,10 +244,42 @@ floats = [
     mkFloater(2*mx/3,my/3)    
 ]
 
+def mkFlowHandler(decay=None, mult=None):
+    global reflower
+    def setter():
+        if not decay == None:
+            reflower.decay = decay
+        if not mult == None:
+            reflower.multiplier = mult
+    return setter
+
+handlers = {
+    ord('1'): mkFlowHandler(decay=0.1),
+    ord('2'): mkFlowHandler(decay=0.5),
+    ord('4'): mkFlowHandler(decay=0.7),
+    ord('5'): mkFlowHandler(decay=0.9),
+    ord('6'): mkFlowHandler(decay=0.95),
+    ord('7'): mkFlowHandler(decay=0.99),
+    ord('8'): mkFlowHandler(decay=0.995),
+    ord('9'): mkFlowHandler(decay=0.999),
+    ord('0'): mkFlowHandler(decay=0.9999),
+    ord('q'): mkFlowHandler(mult=0.1),
+    ord('w'): mkFlowHandler(mult=0.5),
+    ord('e'): mkFlowHandler(mult=0.7),
+    ord('r'): mkFlowHandler(mult=0.7),
+    ord('t'): mkFlowHandler(mult=1.0),
+    ord('y'): mkFlowHandler(mult=2.0),
+    ord('u'): mkFlowHandler(mult=4.0),
+    ord('i'): mkFlowHandler(mult=8.0),
+    ord('o'): mkFlowHandler(mult=16.0)
+}
+
 def handle_keys():
+    global fullscreen
+    global handlers
     k = cv2.waitKey(1000/60) & 0xff
     if k == 27:
-        break
+        return True
     elif k == ord('s'):
         cv2.imwrite('opticalfb.png',frame2)
         cv2.imwrite('opticalhsv.png',rgb)
@@ -258,7 +290,10 @@ def handle_keys():
         else:
             cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, 0)
             fullscreen = False
-
+    else:
+        if k in handlers:
+            handlers[k]()
+    return False
 
 while(1):
     ret, frame2 = cap.read()
@@ -301,7 +336,8 @@ while(1):
     cv2.imshow('rgb',rgb)
     cv2.imshow('dept_map',depth_map)
 
-    handle_keys()
+    if handle_keys():
+        break
 
 
     oldest = prvs
