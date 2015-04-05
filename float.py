@@ -238,11 +238,8 @@ def mkFloater(x=None,y=None,c=None,weight=1.0):
     floaterid += 1
     return floater
 
-floats = [
-    mkFloater(mx/3,2*my/3),
-    mkFloater(mx/2,my/2),
-    mkFloater(2*mx/3,my/3)    
-]
+n = 50
+floats = [mkFloater(i*mx/n,i*my/n) for i in range(0,n)]
 
 def mkFlowHandler(decay=None, mult=None):
     global reflower
