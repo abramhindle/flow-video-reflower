@@ -6,6 +6,10 @@ from numpy import *
 import freenect
 import liblo
 import random
+import time
+
+def current_time():
+    return int(round(time.time() * 1000))
 
 target = liblo.Address(57120)
 
@@ -238,7 +242,7 @@ def mkFloater(x=None,y=None,c=None,weight=1.0):
     floaterid += 1
     return floater
 
-n = 50
+n = 0
 floats = [mkFloater(i*mx/n,i*my/n) for i in range(0,n)]
 
 def mkFlowHandler(decay=None, mult=None):
@@ -292,8 +296,30 @@ def handle_keys():
             handlers[k]()
     return False
 
+starttime = None
+fps=30
+framesecond = 1000 / fps
+myframes = 0
+skips=0
 while(1):
     ret, frame2 = cap.read()
+    myframes += 1
+    mytime = current_time()
+    if (starttime == None):
+        starttime = current_time()
+    expectedframes = (mytime - starttime) / framesecond
+    #print "%s" % [mytime - starttime, expectedframes, myframes]
+    while (expectedframes >  myframes):
+        skips += 1
+        print "Skipping a frame %s %s %s" % (expectedframes, myframes, 1.0*skips/myframes )
+        ret, frame2 = cap.read()
+        myframes += 1
+        
+
+
+
+    #ret, frame2 = cap.read()
+
     #depth_map = get_depth_map()
     depth_map = get_kinect_video()
     if depth_map == None:

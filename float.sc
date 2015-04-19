@@ -88,10 +88,10 @@ SynthDef(\hydro2, {
 	base = 1000/msg[6];
 	scale = base;
 	//freq = ((angle + 1.0)/2.0) * scale + base;
-	freq =  base + (angle * base / 10);
-	~freqs[index] = freq;
-	//dist = ((((nx - 0.5)**2) + ((ny - 0.5)**2)).sqrt);
-	//freq = scale*dist + 20;
+	//freq =  base + (angle * base / 10);
+	//~freqs[index] = freq;
+	dist = ((((nx - 0.5)**2) + ((ny - 0.5)**2)).sqrt);
+	freq = scale*angle + scale*dist + 20;
 	~hydro[index].set(\freq, freq);
 	//~hydro[index].set(\amp, dist/3.0);
 	~hydro[index].set(\amp,(1.0/~n));//+(log(1.0+dist)/5.0));
@@ -101,3 +101,4 @@ SynthDef(\hydro2, {
 OSCFunc.newMatching(~listener, '/flow');
 
 
+89
