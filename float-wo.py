@@ -242,7 +242,7 @@ def mkFloater(x=None,y=None,c=None,weight=1.0):
     floaterid += 1
     return floater
 
-n = 0
+n = 20
 floats = [mkFloater(i*mx/n,i*my/n) for i in range(0,n)]
 
 def mkFlowHandler(decay=None, mult=None):
@@ -275,6 +275,16 @@ handlers = {
     ord('o'): mkFlowHandler(mult=16.0)
 }
 
+def doFullscreen():
+    global fullscreen
+    if not fullscreen:
+        cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
+        fullscreen = True
+    else:
+        cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, 0)
+        fullscreen = False
+
+
 def handle_keys():
     global fullscreen
     global handlers
@@ -285,12 +295,7 @@ def handle_keys():
         cv2.imwrite('opticalfb.png',frame2)
         cv2.imwrite('opticalhsv.png',rgb)
     elif k == ord('f'):
-        if not fullscreen:
-            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
-            fullscreen = True
-        else:
-            cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, 0)
-            fullscreen = False
+        doFullscreen()
     else:
         if k in handlers:
             handlers[k]()
@@ -309,7 +314,7 @@ while(1):
         starttime = current_time()
     expectedframes = (mytime - starttime) / framesecond
     #print "%s" % [mytime - starttime, expectedframes, myframes]
-    while (expectedframes >  myframes):
+    while (expectedframes >=  myframes):
         skips += 1
         print "Skipping a frame %s %s %s" % (expectedframes, myframes, 1.0*skips/myframes )
         ret, frame2 = cap.read()
@@ -321,7 +326,7 @@ while(1):
     #ret, frame2 = cap.read()
 
     #depth_map = get_depth_map()
-    depth_map = get_kinect_video()
+    depth_map = get_kinect_video_cv()
     if depth_map == None:
         print "Bad?"
         continue
@@ -339,7 +344,7 @@ while(1):
         hsv = hsv.astype('uint8')
 
 
-    cv2.imshow('next',next)
+    #cv2.imshow('next',next)
     flow = cv2.calcOpticalFlowFarneback(prvs,next,scale,levels,winsize,iterations,polyn,polysigma,0)
     mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
     hsv[...,0] = ang*180/np.pi/2
@@ -355,9 +360,9 @@ while(1):
     floater_repel( floats )
     draw_floaters( floats, remapped )
 
+    #cv2.imshow('rgb',rgb)
+    #cv2.imshow('dept_map',depth_map)
     cv2.imshow('remapped',remapped)
-    cv2.imshow('rgb',rgb)
-    cv2.imshow('dept_map',depth_map)
 
     if handle_keys():
         break

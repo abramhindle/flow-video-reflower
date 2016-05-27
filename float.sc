@@ -55,7 +55,7 @@ SynthDef(\hydro2, {
 	)
 }).add;
 
-~n = 50;
+~n = 20;
 ~hydro = ~n.collect { Synth.new([\hydro2,\hydro3,\hydro4].choose) };
 ~hydro.do { |x| x.set(\amp,1.0/~n) };
 ~lastx = ~n.collect { 0 };
@@ -101,4 +101,3 @@ SynthDef(\hydro2, {
 OSCFunc.newMatching(~listener, '/flow');
 
 
-89

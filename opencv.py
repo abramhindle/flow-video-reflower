@@ -151,7 +151,7 @@ reflower = ReflowDecay(ptpts,decay=0.7,multiplier=10)
 while(1):
     ret, frame2 = cap.read()
     #depth_map = get_depth_map()
-    depth_map = get_kinect_video()
+    depth_map = get_kinect_video_cv()
     if depth_map == None:
         print "Bad?"
         continue
