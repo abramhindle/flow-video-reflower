@@ -113,9 +113,9 @@ def get_depth_map():
     depth = depth.astype(np.uint8)
  
     return depth
-
+freenect_use = False
 def get_kinect_video():    
-    if not kinect == None:
+    if freenect_use == False or  not kinect == None:
         return get_kinect_video_cv()
     depth, timestamp = freenect.sync_get_video()  
     if (depth == None):
@@ -282,8 +282,8 @@ def handle_keys():
     if k == 27:
         return True
     elif k == ord('s'):
-        cv2.imwrite('opticalfb.png',frame2)
-        cv2.imwrite('opticalhsv.png',rgb)
+        for i in xrange(0,30*5):
+            ret, frame2 = cap.read()
     elif k == ord('f'):
         if not fullscreen:
             cv2.setWindowProperty("remapped", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)

@@ -14,6 +14,7 @@ def current_time():
 target = liblo.Address(57120)
 
 
+
 fullscreen = False
 cv2.namedWindow("remapped", cv2.WND_PROP_FULLSCREEN)
 
@@ -50,10 +51,8 @@ def get_depth_map():
  
     return depth
 
-freenect_use = False
-
 def get_kinect_video():    
-    if freenect_use == False or not kinect == None:
+    if kinect != None:
         return get_kinect_video_cv()
     depth, timestamp = freenect.sync_get_video()  
     if (depth == None):
@@ -66,14 +65,19 @@ def get_kinect_video_cv():
     global kinect
     if kinect == None:
         print "Opening Kinect"
-        kinect = cv2.VideoCapture(-1)
+        kinect = cv2.VideoCapture(0)
     ret, frame2 = kinect.read()
     if not ret:
         return None
     next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
     return next
 
-
+# From Alex Rodrigues https://stackoverflow.com/questions/9041681/opencv-python-rotate-image-by-x-degrees-around-specific-point/18683594
+def rotateImage(image, angle):
+  image_center = tuple(np.array(image.shape)/2)
+  rot_mat = cv2.getRotationMatrix2D(image_center,angle,1.0)
+  result = cv2.warpAffine(image, rot_mat, (image.shape[1],image.shape[0]),flags=cv2.INTER_LINEAR)
+  return result
 
 scaledown = 0.4
 ret, frame1 = cap.read()
@@ -158,6 +162,7 @@ ptpts = init_ptpts(ptpts)
 frames = 0
 
 reflower = ReflowDecay(ptpts,decay=0.99,multiplier=1)
+#reflower = Reflow(ptpts)
 mx=remapped.shape[1]
 my=remapped.shape[0]
 colors = [
@@ -166,22 +171,8 @@ colors = [
     (0,0,255)
 ]
 weights = [1,2,4]
-def mkFloater(x=None,y=None,c=None,weight=1.0):
-    global floaterid
-    global remapped
-    global target
-    mmx=remapped.shape[1]
-    mmy=remapped.shape[0]
-    if (x == None):
-        x = mmx/2
-    if (y == None):
-        y = mmy/2
-    floater = Floater(floaterid, x, y, mmx, mmy, colors[floaterid % len(colors)], target, weight=weights[floaterid % len(weights)])
-    floaterid += 1
-    return floater
 
 n = 0
-#floats = [mkFloater(i*mx/n,i*my/n) for i in range(0,n)]
 
 def mkFlowHandler(decay=None, mult=None):
     global reflower
@@ -239,6 +230,7 @@ fps=30
 framesecond = 1000 / fps
 myframes = 0
 skips=0
+depth_map = get_kinect_video_cv()
 while(1):
     ret, frame2 = cap.read()
     myframes += 1
@@ -246,19 +238,12 @@ while(1):
     if (starttime == None):
         starttime = current_time()
     expectedframes = (mytime - starttime) / framesecond
-    #print "%s" % [mytime - starttime, expectedframes, myframes]
     while (expectedframes >  myframes):
         skips += 1
         print "Skipping a frame %s %s %s" % (expectedframes, myframes, 1.0*skips/myframes )
         ret, frame2 = cap.read()
         myframes += 1
         
-
-
-
-    #ret, frame2 = cap.read()
-
-    #depth_map = get_depth_map()
     depth_map = get_kinect_video()
     if depth_map == None:
         print "Bad?"
@@ -266,15 +251,13 @@ while(1):
     depth_map = cv2.flip(depth_map, 1)
 
 
-    #next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
-    #next = cv2.resize(next, (0,0), fx=scaledown, fy=scaledown) 
-
     next = cv2.resize(depth_map, (0,0), fx=scaledown, fy=scaledown)
+    next = cv2.GaussianBlur( (next ).astype(np.float32), (5,5), 0)
     if prvs == None:
         prvs = cv2.resize(depth_map, (0,0), fx=scaledown, fy=scaledown)
-        hsv = np.zeros((prvs.shape[0],prvs.shape[1],3))
-        hsv[...,1] = 255
-        hsv = hsv.astype('uint8')
+        #hsv = np.zeros((prvs.shape[0],prvs.shape[1],3))
+        #hsv[...,1] = 255
+        #hsv = hsv.astype('uint8')
 
 
     cv2.imshow('next',next)
@@ -285,7 +268,15 @@ while(1):
     #print prvs.shape
     #print prvs.dtype
     #flow = np.empty((next.shape[0],next.shape[1],2), dtype=np.float32)
-    flow = np.dstack([next.astype(np.float32),prvs.astype(np.float32)])
+    #diff1 = cv2.GaussianBlur( (next ).astype(np.float32), (5,5), 0)
+    diff = np.abs(next - prvs)
+    rdiff1 = rotateImage(diff,45)
+    rdiff2 = np.fliplr(diff)
+    rdiff3 = np.flipud(diff)
+    rdiff4 = np.flipud(rdiff1)
+    rdiff5 = np.fliplr(rdiff4)
+    cdiff = diff + rdiff1 + rdiff2 + rdiff3 + rdiff4 + rdiff5 
+    flow = np.dstack([cdiff,cdiff])
     #flow = np.reshape([next.astype(np.float32),prvs.astype(np.float32)],(next.shape[0],next.shape[1],2),order='C')
     print flow.shape
     #mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
@@ -298,17 +289,12 @@ while(1):
     remapped = cv2.remap(remapped, rflow[...,0],rflow[...,1], 0, borderMode=cv2.BORDER_REFLECT )#cv2.INTER_LINEAR)
     (rh,rw,_) = remapped.shape
 
-    #flow_floaters(floats, rflow)
-    #floater_repel( floats )
-    #draw_floaters( floats, remapped )
-
     cv2.imshow('remapped',remapped)
     #cv2.imshow('rgb',rgb)
     cv2.imshow('dept_map',depth_map)
 
     if handle_keys():
         break
-
 
     oldest = prvs
     prvs = next

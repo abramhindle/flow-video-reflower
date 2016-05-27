@@ -52,7 +52,7 @@ def get_depth_map():
     return depth
 
 def get_kinect_video():    
-    if not kinect == None:
+    if kinect != None:
         return get_kinect_video_cv()
     depth, timestamp = freenect.sync_get_video()  
     if (depth == None):
@@ -65,7 +65,7 @@ def get_kinect_video_cv():
     global kinect
     if kinect == None:
         print "Opening Kinect"
-        kinect = cv2.VideoCapture(-1)
+        kinect = cv2.VideoCapture(0)
     ret, frame2 = kinect.read()
     if not ret:
         return None
@@ -225,6 +225,7 @@ fps=30
 framesecond = 1000 / fps
 myframes = 0
 skips=0
+depth_map = get_kinect_video_cv()
 while(1):
     ret, frame2 = cap.read()
     myframes += 1
