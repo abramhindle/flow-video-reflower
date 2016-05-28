@@ -225,7 +225,7 @@ fps=30
 framesecond = 1000 / fps
 myframes = 0
 skips=0
-depth_map = get_kinect_video_cv()
+# depth_map = get_kinect_video_cv()
 while(1):
     ret, frame2 = cap.read()
     myframes += 1

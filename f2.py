@@ -113,7 +113,7 @@ def get_depth_map():
     depth = depth.astype(np.uint8)
  
     return depth
-freenect_use = False
+freenect_use = True
 def get_kinect_video():    
     if freenect_use == False or  not kinect == None:
         return get_kinect_video_cv()

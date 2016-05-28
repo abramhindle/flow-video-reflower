@@ -230,7 +230,7 @@ fps=30
 framesecond = 1000 / fps
 myframes = 0
 skips=0
-depth_map = get_kinect_video_cv()
+# depth_map = get_kinect_video_cv()
 while(1):
     ret, frame2 = cap.read()
     myframes += 1
@@ -245,6 +245,7 @@ while(1):
         myframes += 1
         
     depth_map = get_kinect_video()
+    #depth_map = get_depth_map()
     if depth_map == None:
         print "Bad?"
         continue
