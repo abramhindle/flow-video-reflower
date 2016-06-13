@@ -238,7 +238,7 @@ def mkFloater(x=None,y=None,c=None,weight=1.0):
     floaterid += 1
     return floater
 
-n = 50
+n = 5
 floats = [mkFloater(i*mx/n,i*my/n) for i in range(0,n)]
 
 def mkFlowHandler(decay=None, mult=None):

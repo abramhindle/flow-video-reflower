@@ -77,6 +77,9 @@ def get_kinect_video_cv():
 scaledown = 0.4
 ret, frame1 = cap.read()
 remapped = frame1
+        
+# force webcam
+get_kinect_video_cv()
 
 DEPTH_MAP = 0
 

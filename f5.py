@@ -85,6 +85,8 @@ remapped = frame1
 
 DEPTH_MAP = 0
 
+# force webcam
+get_kinect_video_cv()
 
 prvs = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
 oldest = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
